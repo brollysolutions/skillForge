@@ -1,0 +1,24 @@
+# Send only build inputs to Docker, never local credentials/classroom data.
+**
+!backend/
+!backend/**
+!frontend/
+!frontend/**
+!infra/
+!infra/docker/
+!infra/docker/**
+**/node_modules
+**/dist
+**/dist-brolly
+**/__pycache__
+**/*.py[cod]
+**/*.sqlite3*
+**/*.db
+**/*.log
+**/.env*
+!frontend/.env.brolly
+backend/media
+backend/staticfiles
+frontend/test-results
+frontend/playwright-report
+frontend/coverage

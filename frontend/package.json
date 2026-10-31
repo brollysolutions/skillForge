@@ -1,0 +1,43 @@
+{
+  "name": "skillforge-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "build:portable": "vite build --config vite.portable.config.js --configLoader native",
+    "preview": "vite preview --host 127.0.0.1",
+    "preview:portable": "vite preview --host 127.0.0.1 --port 5173 --config vite.portable.config.js --configLoader native",
+    "test": "vitest run",
+    "test:portable": "node scripts/test-portable.mjs",
+    "test:integration": "node scripts/test-portable.mjs --integration",
+    "test:e2e": "playwright test",
+    "build:brolly": "vite build --mode brolly",
+    "build:brolly:portable": "vite build --mode brolly --config vite.portable.config.js --configLoader native",
+    "test:subpath": "node scripts/test-portable.mjs --integration --subpath"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.0",
+    "axios": "^1.12.0",
+    "lucide-react": "^0.468.0",
+    "monaco-editor": "^0.52.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hook-form": "^7.62.0",
+    "react-router-dom": "^7.8.0",
+    "recharts": "^3.1.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^6.3.0",
+    "tailwindcss": "^4.1.0",
+    "vitest": "^3.2.0",
+    "jsdom": "^30.0.1",
+    "@testing-library/react": "^16.3.0",
+    "@playwright/test": "^1.55.0",
+    "typescript": "^5.8.3"
+  }
+}

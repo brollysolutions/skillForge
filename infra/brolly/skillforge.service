@@ -1,0 +1,25 @@
+[Unit]
+Description=SkillForge AI Django API
+After=network.target
+
+[Service]
+Type=simple
+User=skillforge
+Group=skillforge
+WorkingDirectory=/srv/skillforge/backend
+EnvironmentFile=/etc/skillforge/skillforge.env
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/srv/skillforge/.venv/bin/waitress-serve --listen=127.0.0.1:8010 --threads=4 --url-scheme=https config.wsgi:application
+Restart=on-failure
+RestartSec=5
+UMask=0077
+StateDirectory=skillforge
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/skillforge
+
+[Install]
+WantedBy=multi-user.target

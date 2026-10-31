@@ -1,0 +1,85 @@
+name: skillforge
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    init: true
+    env_file: .env
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Run python3 scripts/init-docker-env.py and configure .env first}
+      DJANGO_DEBUG: "false"
+      DJANGO_SCRIPT_NAME: /skillforge
+      DJANGO_DB_PATH: /data/db.sqlite3
+      DJANGO_MEDIA_ROOT: /data/media
+      DJANGO_STATIC_ROOT: /staticfiles
+      SECURE_SSL_REDIRECT: "true"
+      SESSION_COOKIE_SECURE: "true"
+      CSRF_COOKIE_SECURE: "true"
+      DJANGO_TRUST_PROXY_SSL: "false"
+    volumes:
+      - data:/data
+      - static:/staticfiles
+    expose:
+      - "8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 128
+    stop_grace_period: 40s
+    healthcheck:
+      test: [CMD, python, /app/infra/docker/healthcheck.py]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${SKILLFORGE_HTTP_PORT:-3830}:8080"
+    networks:
+      default:
+        aliases: [skillforge-gateway]
+    volumes:
+      - static:/staticfiles:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    cpus: 0.5
+    pids_limit: 64
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/healthz]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  data:
+  static:

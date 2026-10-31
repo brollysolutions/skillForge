@@ -133,6 +133,10 @@ not send mail; share the generated initial password directly. They sign in at
 
 ## Code execution
 
+If only the current server is available, the opt-in
+[single-server runner setup](piston-same-server.md) adds Piston with explicit
+shared-host limitations. The default stack below keeps the runner separate.
+
 Piston remains a separately isolated runner. The main application stack does
 not mount the Docker socket or start a privileged execution container on this
 multi-application server. Follow [Piston setup](piston-setup.md) on a dedicated

@@ -1,5 +1,10 @@
 # Piston without a paid execution API
 
+For the explicitly requested installation on the existing Brolly server, see
+[single-server Piston setup](piston-same-server.md). It documents the privileged
+container tradeoff and the additional Docker network. The instructions below
+remain the recommended dedicated-runner deployment.
+
 SkillForge supports self-hosted Piston for both sample runs and final grading. There is no Piston API subscription or per-run provider fee when you host it yourself. You still need a computer/VM with sufficient resources; rented infrastructure may cost money. The public EMKC service requires authorization and is not configured by this project. [Upstream installation and API reference](https://github.com/engineer-man/piston).
 
 ## What is ready here

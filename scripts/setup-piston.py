@@ -1,4 +1,4 @@
-"""Run on the dedicated Piston host to install Python; no API subscription needed."""
+"""Run on the Piston host to install Python through its loopback API."""
 import argparse
 import json
 import re

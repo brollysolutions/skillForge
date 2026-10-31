@@ -1,5 +1,6 @@
-# Run only on a dedicated Linux VM/host, with cgroup v2 enabled.
-# Piston requires privileged mode. Do not run on the Django/database host.
+# Prefer a dedicated Linux VM/host, with cgroup v2 enabled.
+# Piston requires privileged mode. For the explicitly requested shared-server
+# option, see same-host.override.yaml and docs/piston-same-server.md.
 services:
   piston:
     image: ${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}

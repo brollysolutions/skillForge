@@ -16,6 +16,8 @@ from reports.models import PerformanceReport
 trainer=User.objects.get(email='trainer@browser.test');student=User.objects.get(email='student@browser.test')
 course,_=Course.objects.get_or_create(trainer=trainer,title='UI audit fixture')
 assignment,_=Assignment.objects.update_or_create(trainer=trainer,course=course,title='UI audit: expected output',defaults={'status':'published','deadline':timezone.now()+timedelta(days=7),'total_marks':10,'results_released':False,'attempts_allowed':10})
+# Reset only this disposable fixture so repeated browser runs do not exhaust attempts.
+assignment.submissions.filter(student=student).delete()
 question,_=Question.objects.update_or_create(assignment=assignment,title='Read the output',defaults={'prompt':'Write the output of print(2 + 2).','type':'output_prediction','correct_answer':['4'],'marks':10})
 AssignmentAccess.objects.get_or_create(assignment=assignment,student=student)
 draft,_=Assignment.objects.get_or_create(trainer=trainer,course=course,title='UI audit: draft',defaults={'total_marks':10})

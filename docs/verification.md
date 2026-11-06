@@ -1,5 +1,21 @@
 # Verification record
 
+## UI/UX workflow update - November 6, 2026
+
+- Reorganized dashboards around role-specific next actions, with recent work and deadlines above detailed analytics. Recent activity is limited to five items with a link to the full list. Refined card hierarchy, navigation groups, toolbar styling, and mobile form sizing while retaining light/dark themes.
+- Added an Assignments navigation entry for admin and sales. The trainer review shortcut opens the submitted-work filter, which persists through reload. Assignment searches now show a distinct no-match state and a clear-filters action.
+- Mobile navigation now includes an internal close button, keyboard focus wrapping, background interaction blocking, scroll locking, Escape dismissal, and focus restoration.
+- Portable build and seven component tests pass. Browser coverage includes the new dashboard/filter/mobile-keyboard workflow plus the existing role, account-access, publishing, submission, detail-page, and responsive UI audits. Reviewed updated desktop and mobile-dark screenshots under `artifacts/`.
+- All 12 browser scenarios pass across the verification runs. The final focused rerun passed after scoping the mobile close-button assertion to its drawer and allowing the initial login up to 15 seconds on this local environment.
+
+## End-to-end regression and fixes - November 6, 2026
+
+- Reproduced and fixed two defects: malformed course-enrollment IDs returned HTTP 500 instead of validation errors, and the trainer's student-access dialog showed an empty cached roster immediately after publishing a batch assignment. Enrollment now validates integer IDs before querying; opening the access dialog refreshes its roster.
+- Added backend regression coverage for invalid enrollment payloads and a Chrome assertion that newly published batch assignments show their enrolled students immediately. Added a browser lifecycle covering sales-created student access, case-insensitive email login, session restoration after reload, deactivation, rejected inactive login, and reactivation.
+- Final checks passed: 73 Django tests, seven component tests, all 11 Chrome scenarios, the rendered trainer-to-student lifecycle against the live isolated API, portable production build, and migration consistency. The initial browser login timeout did not recur on either rerun; the final complete browser suite passed without retries.
+- Browser testing covers all four roles, desktop/mobile layouts, dark mode, dialogs, assignment publishing, answer submission, output comparison, reports, and student performance. The integration lifecycle covers material creation, saving answers, grading, closing, release, and student result visibility. Database writes used the isolated browser fixture or Django's test database.
+- Live Groq assignment-generation and Piston execution probes could not connect from the restricted environment. Automatic approval review rejected the external retry pending explicit user approval to send synthetic instructions/code using configured credentials. These live integrations remain unverified; mocked provider and runner contract/error tests pass. No production deployment was performed.
+
 ## UI and tag review - November 6, 2026
 
 - The final portable production build and trainer-to-student lifecycle against the isolated live API pass, including saving answers, submission, closing, releasing, and viewing results.

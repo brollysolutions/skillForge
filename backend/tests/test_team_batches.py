@@ -130,6 +130,15 @@ class TeamBatchTests(TestCase):
         self.as_user(self.sales)
         self.assertEqual(self.api.post('/api/assignments/import-question/', {}).status_code, 403)
 
+    def test_course_enrollment_rejects_malformed_ids_without_server_errors(self):
+        self.as_user(self.sales)
+        for ids in [['not-an-id'], [{}], [None], [True], [1.5]]:
+            with self.subTest(ids=ids):
+                response = self.api.post(f'/api/courses/{self.course.pk}/enrollments/',
+                                         {'student_ids': ids}, format='json')
+                self.assertEqual(response.status_code, 400, response.data)
+        self.assertFalse(CourseEnrollment.objects.exists())
+
     def test_output_prediction_compares_case_and_internal_spacing(self):
         from assignments.models import Question
         from submissions.models import Submission, QuestionResponse

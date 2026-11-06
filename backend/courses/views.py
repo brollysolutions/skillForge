@@ -60,7 +60,7 @@ class CourseViewSet(viewsets.ModelViewSet):
         course = self.get_object()
         if request.method == 'POST':
             ids = request.data.get('student_ids', [])
-            if not isinstance(ids, list) or not ids or len(ids) > 500:
+            if not isinstance(ids, list) or not ids or len(ids) > 500 or any(type(i) is not int for i in ids):
                 raise serializers.ValidationError('Provide 1 to 500 student IDs.')
             students = visible_students(request.user).filter(id__in=ids, is_active=True)
             if students.count() != len(set(ids)):

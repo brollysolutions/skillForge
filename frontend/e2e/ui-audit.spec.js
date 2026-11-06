@@ -7,6 +7,37 @@ async function visit(page, route) {
   await page.waitForLoadState('networkidle');
 }
 const credentials=JSON.parse(fs.readFileSync('../.task-temp/browser-credentials.json','utf8'));
+
+test('dashboard actions filter work, empty searches recover, and mobile navigation traps focus',async({page})=>{
+  await visit(page,'/login');
+  await page.getByLabel('Email address',{exact:true}).fill(credentials.trainer);
+  await page.getByRole('button',{name:'Open my workspace'}).click();
+  await expect(page.getByRole('heading',{name:'What would you like to do next?'})).toBeVisible();
+  await page.getByRole('link',{name:/Review submissions/}).click();
+  await expect(page.getByRole('combobox',{name:'Submission status'})).toHaveValue('submitted');
+  await page.reload();
+  await expect(page.getByRole('combobox',{name:'Submission status'})).toHaveValue('submitted');
+  await visit(page,'/assignments');
+  await page.getByRole('textbox',{name:'Search assignments'}).fill('no-assignment-has-this-title-ux-check');
+  await expect(page.getByRole('heading',{name:'No matching assignments'})).toBeVisible();
+  await page.locator('.empty').getByRole('button',{name:'Clear filters'}).click();
+  await expect(page.getByRole('textbox',{name:'Search assignments'})).toHaveValue('');
+  await expect(page.getByRole('heading',{name:'No matching assignments'})).toHaveCount(0);
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole('button',{name:'Open navigation'}).click();
+  const drawer=page.getByRole('dialog',{name:'Workspace navigation'});
+  const close=drawer.getByRole('button',{name:'Close navigation'});
+  await expect(close).toBeFocused();
+  expect(await page.locator('.main-shell').evaluate(element=>element.inert)).toBe(true);
+  await page.keyboard.press('Shift+Tab');
+  await expect(drawer.getByRole('button',{name:'Sign out'})).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  expect(await page.evaluate(()=>document.body.style.overflow)).toBe('hidden');
+  await close.click();
+  await expect(page.getByRole('button',{name:'Open navigation'})).toBeFocused();
+  expect(await page.evaluate(()=>document.body.style.overflow)).not.toBe('hidden');
+});
 const routes={admin:['/','/team','/students','/courses','/topics','/batches','/assignments','/submissions','/performance','/notifications','/profile'],sales:['/','/team','/students','/courses','/batches','/assignments','/submissions','/performance','/notifications','/profile'],trainer:['/','/batches','/students','/courses','/topics','/materials','/generator','/assignments','/assignments/new','/submissions','/performance','/reports','/leaderboard','/notifications','/settings','/profile'],student:['/','/assignments','/coding','/submissions','/performance','/reports','/learning-path','/leaderboard','/notifications','/profile']};
 async function audit(page,route){
   await expect(page.locator('main h1')).toHaveCount(1);
@@ -43,7 +74,7 @@ test('dialogs expose titles and keyboard dismissal; mobile menu supports Escape'
   for(const [route,button,title] of [['/students','Add student','Grant student access'],['/courses','New course','New course'],['/batches','Create batch','Create batch'],['/materials','Add material','Add study material']]){
     await visit(page,route);const trigger=page.getByRole('button',{name:button,exact:true});await trigger.click();await expect(page.getByRole('dialog',{name:title,exact:true})).toBeVisible();await audit(page,route+' dialog');await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);await expect(trigger).toBeFocused();
   }
-  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Open navigation'}).click();await expect(page.getByRole('button',{name:'Close navigation'})).toHaveAttribute('aria-expanded','true');await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Open navigation'})).toBeFocused();
+  await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Open navigation'}).click();await expect(page.getByRole('dialog',{name:'Workspace navigation'}).getByRole('button',{name:'Close navigation'})).toHaveAttribute('aria-expanded','true');await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Open navigation'})).toBeFocused();
 });
 
 test('assignment, editor, submission, report and student workspace details',async({page})=>{

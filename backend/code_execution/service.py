@@ -94,6 +94,6 @@ def evaluate_code(source, question):
             passed += 1
             passed_weight += case.weight
         if not case.is_hidden:
-            sample_results.append(result)
+            sample_results.append({**result, 'input': case.input, 'expected_output': case.expected_output})
     # Never persist hidden inputs, expected outputs, stdout, stderr, or timings in student-facing execution data.
     return {'passed': passed, 'total': total, 'passed_weight': passed_weight, 'weight': weight, 'samples': sample_results}

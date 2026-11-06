@@ -16,7 +16,7 @@ class ResponseSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         user = self.context['request'].user
-        if user.role != 'trainer':
+        if user.role == 'student':
             data.pop('rubric', None)
             data.pop('ai_suggestion', None)
             if not instance.submission.assignment.results_released or instance.submission.status != 'evaluated':
@@ -41,7 +41,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        if self.context['request'].user.role != 'trainer' and (not instance.assignment.results_released or instance.status != 'evaluated'):
+        if self.context['request'].user.role == 'student' and (not instance.assignment.results_released or instance.status != 'evaluated'):
             data['score'] = None
             data['percentage'] = None
             if instance.status == 'evaluated':

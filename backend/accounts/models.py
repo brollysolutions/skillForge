@@ -14,14 +14,14 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password, **extra):
-        extra.update(is_staff=True, is_superuser=True, role='trainer')
+        extra.update(is_staff=True, is_superuser=True, role='admin')
         return self.create_user(email, password, **extra)
 
 
 class User(AbstractBaseUser, PermissionsMixin, Timestamped):
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=120)
-    role = models.CharField(max_length=10, choices=[('trainer', 'Trainer'), ('student', 'Student')], default='student')
+    role = models.CharField(max_length=10, choices=[('admin', 'Admin'), ('sales', 'Sales'), ('trainer', 'Trainer'), ('student', 'Student')], default='student')
     trainer = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='students')
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -31,7 +31,8 @@ class User(AbstractBaseUser, PermissionsMixin, Timestamped):
     REQUIRED_FIELDS = ['name']
 
     class Meta:
-        constraints = [models.UniqueConstraint(Lower('email'), name='unique_normalized_email')]
+        constraints = [models.UniqueConstraint(Lower('email'), name='unique_normalized_email'),
+                       models.UniqueConstraint(fields=['role'], condition=models.Q(role='admin'), name='single_platform_admin')]
 
     def save(self, *args, **kwargs):
         self.email = self.email.strip().lower()

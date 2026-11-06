@@ -14,13 +14,14 @@ from .models import PerformanceReport, LearningRecommendation
 
 
 def build_report(trainer, student):
-    snapshot = analytics(student)
-    submissions = list(Submission.objects.filter(student=student, status='evaluated', assignment__results_released=True)
+    snapshot = analytics(student, {'trainer': trainer.pk})
+    submissions = list(Submission.objects.filter(student=student, assignment__trainer=trainer, status='evaluated', assignment__results_released=True)
                        .select_related('assignment').prefetch_related('responses__question').order_by('-submitted_at')[:100])
     if not submissions:
         raise ValidationError('Release at least one evaluated assessment result before generating a report.')
-    assignments = accessible_assignments(student).filter(status='published', results_released=False)
-    topics = Topic.objects.filter(course__trainer=trainer)
+    assignments = accessible_assignments(student).filter(trainer=trainer, status='published', results_released=False)
+    from core.access import visible_courses
+    topics = Topic.objects.filter(course__in=visible_courses(trainer))
     evidence = {
         'metrics': snapshot['metrics'], 'topic_scores': snapshot['topic_scores'], 'trends': snapshot['trends'],
         'history': [{'submission_id': s.pk, 'assignment_id': s.assignment_id, 'topic_id': s.assignment.topic_id,

@@ -107,8 +107,14 @@ def evaluate_response(response):
             response.score = q.marks
         elif q.marking_policy == 'partial':
             response.score = q.marks * Decimal(max(0, len(chosen & correct) - len(chosen - correct))) / Decimal(len(correct))
-    elif q.type in ['fill_blank', 'output_prediction']:
+    elif q.type == 'fill_blank':
         response.score = q.marks if normalized(answer) in {normalized(v) for v in q.correct_answer} else Decimal('0')
+    elif q.type == 'output_prediction':
+        matched = any(answer.rstrip() == expected.rstrip() for expected in q.correct_answer)
+        response.score = q.marks if matched else Decimal('0')
+        response.execution = {'passed': int(matched), 'total': 1, 'samples': [{
+            'accepted': matched, 'status': 'Accepted' if matched else 'Wrong Answer',
+            'expected_output': q.correct_answer[0], 'stdout': answer, 'stderr': ''}]}
     elif q.type in ['coding', 'debugging']:
         if not isinstance(answer, str):
             raise ValidationError('Code must be text.')

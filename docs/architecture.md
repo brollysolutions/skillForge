@@ -10,7 +10,6 @@ flowchart LR
   D --> G[Groq official SDK]
   D --> GE[Google Gen AI official SDK]
   D --> J[Isolated Piston or Judge0 service]
-  D --> E[Console email / SMTP]
 ```
 
 The repository root contains `backend` and `frontend`. Django apps follow domain boundaries: accounts, courses, materials, assignments, submissions, reports, and core. AI, analytics, and execution modules expose service functions independent of HTTP views. This makes moving work into background tasks possible without moving grading or access decisions into the frontend.
@@ -19,9 +18,10 @@ The repository root contains `backend` and `frontend`. Django apps follow domain
 
 ## Trust boundaries
 
-- Authentication uses short-lived access tokens held in memory and rotating refresh tokens stored in the browser tab's session storage. Logout blacklists the refresh token and clears cached assessment answers. Access tokens already issued remain valid until their short expiry unless the account is deactivated or its password changes. Production deployments that require immediate token revocation should add an access-token revocation/version check.
-- A trainer owns students, courses, materials, assessments and reports. Querysets constrain every object lookup to the authenticated role and owner. Students use `AssignmentAccess` foreign keys, never a submitted email address, to authorize assessments.
-- Students cannot self-register, set their own role, change their account email, or edit marks. Trainers can grant immediate access without email: the server generates a password, stores only its hash, and returns it once to the owning trainer with a no-store response. The email identifies the account; the password authenticates it. Profile updates expose only name and biography; a separate password change endpoint requires the current password.
+- Login is email-only by explicit product choice. An active registered email creates a session without verifying ownership. Anyone who knows an approved email can impersonate that account; this applies to staff too. No passwords, OTPs, or login emails are used.
+- Sessions use short-lived access tokens in memory and rotating refresh tokens in tab session storage. Deactivation changes the account's revocation hash; both access and refresh validation reject prior sessions even after reactivation. Logout blacklists the refresh token; an already issued access token lasts until expiry unless deactivated.
+- One admin manages sales and trainers. Sales can manage trainers, students, courses, and batches and read performance, but cannot author or grade assignments. Trainers see their own batches and assessment results; shared students may belong to multiple trainers' batches. Students use `AssignmentAccess` to authorize work.
+- Student self-registration, role changes, account-email changes, and mark editing are not allowed. Profile updates expose name and biography only. See [role and batch workflow](team-batches.md).
 - The application never returns question answer keys to students. Public question serializers expose only the prompt, options, and sample tests. Hidden test cases are restricted to trainer views and backend evaluation.
 - Correct-answer explanations and marks are unavailable before result release. Trainer-only report observations are removed from student JSON and PDFs.
 - Uploaded filenames are replaced with UUID storage names. Extension, file signature/container, size, decompressed archive size, extracted length, encryption, and empty-text checks precede processing. Scanned PDFs report an OCR requirement. The application does not perform OCR. Python source uploads preserve whitespace and are never executed. Jupyter format-v4 notebooks are structurally validated and contribute only ordered cell sources, excluding outputs, attachments, and metadata from AI input.

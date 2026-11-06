@@ -28,3 +28,21 @@ class CourseEnrollment(Timestamped):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['course', 'student'], name='unique_enrollment')]
+
+
+class Batch(Timestamped):
+    course = models.ForeignKey(Course, on_delete=models.PROTECT, related_name='batches')
+    trainer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='teaching_batches')
+    title = models.CharField(max_length=180)
+    starts_at = models.DateField(null=True, blank=True)
+    ends_at = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+
+class BatchMembership(Timestamped):
+    batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name='memberships')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['batch', 'student'], name='unique_batch_member')]

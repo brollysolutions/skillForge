@@ -71,25 +71,11 @@ class WorkflowTests(TestCase):
             self.assertEqual(self.api.get(url).status_code,403,url)
         self.assertEqual(self.api.post('/api/assignments/',{}).status_code,403)
 
-    def test_invite_accept_single_use_and_email_unique(self):
-        self.login_as(self.trainer)
-        response=self.api.post('/api/admin/students/invite/',{'name':'New Student','email':'NEW@EXAMPLE.COM'})
-        self.assertEqual(response.status_code,201,response.data)
-        self.assertEqual(len(mail.outbox),1)
-        token=mail.outbox[0].body.split('token=')[1].split('\n')[0]
-        invitation=Invitation.objects.get(email='new@example.com')
-        self.assertEqual(invitation.token_hash,hashlib.sha256(token.encode()).hexdigest())
-        self.assertNotEqual(invitation.token_hash,token)
-        self.api.force_authenticate(user=None)
-        payload={'token':token,'password':'UniqueStrongPassword!93'}
-        response=self.api.post('/api/auth/invitations/accept/',payload)
-        self.assertEqual(response.status_code,201,response.data)
-        self.assertTrue(User.objects.get(email='new@example.com').check_password(payload['password']))
-        self.assertEqual(self.api.post('/api/auth/invitations/accept/',payload).status_code,400)
-
-    def test_expired_invitation_rejected(self):
-        Invitation.objects.create(trainer=self.trainer,email='expired@example.com',name='Expired',token_hash=hashlib.sha256(b'token').hexdigest(),expires_at=timezone.now()-timedelta(seconds=1))
-        self.assertEqual(self.api.post('/api/auth/invitations/accept/',{'token':'token','password':'UniqueStrongPassword!93'}).status_code,400)
+    def test_legacy_invitation_cannot_activate_account(self):
+        Invitation.objects.create(trainer=self.trainer, email='expired@example.com', name='Expired',
+            token_hash=hashlib.sha256(b'token').hexdigest(), expires_at=timezone.now()+timedelta(days=1))
+        self.assertEqual(self.api.post('/api/auth/invitations/accept/', {'token':'token'}).status_code, 404)
+        self.assertFalse(User.objects.filter(email='expired@example.com').exists())
 
     def test_deactivation_revokes_access(self):
         response=self.api.post('/api/auth/login/',{'email':self.student.email,'password':'StudentPassword!42'})

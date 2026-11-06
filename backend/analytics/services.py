@@ -14,17 +14,22 @@ def percent(numerator, denominator):
 
 def analytics(user, filters=None):
     filters = filters or {}
+    from core.access import visible_students, visible_courses
     trainer = user if user.role == 'trainer' else user.trainer
-    assignments = Assignment.objects.filter(trainer=trainer)
-    access = AssignmentAccess.objects.filter(assignment__trainer=trainer, is_active=True)
-    submissions = Submission.objects.filter(assignment__trainer=trainer).select_related('assignment__topic', 'student')
-    students = User.objects.filter(trainer=trainer, role='student')
+    assignments = Assignment.objects.all()
+    if user.role == 'trainer':
+        assignments = assignments.filter(trainer=user)
+    elif filters.get('trainer'):
+        assignments = assignments.filter(trainer_id=filters['trainer'])
+    access = AssignmentAccess.objects.filter(assignment__in=assignments, is_active=True)
+    submissions = Submission.objects.filter(assignment__in=assignments).select_related('assignment__topic', 'student')
+    students = visible_students(user)
     if user.role == 'student':
         access = access.filter(student=user)
         assignments = assignments.filter(access_records__student=user, access_records__is_active=True, status__in=['published','closed'])
         submissions = submissions.filter(student=user)
         students = students.filter(pk=user.pk)
-    for key in ['course', 'topic', 'assignment', 'student']:
+    for key in ['course', 'topic', 'assignment', 'student', 'batch']:
         value = filters.get(key)
         if not value:
             continue
@@ -36,6 +41,8 @@ def analytics(user, filters=None):
             assignments = assignments.filter(**{f'{key}_id': value})
             access = access.filter(**{f'assignment__{key}_id': value})
             submissions = submissions.filter(**{f'assignment__{key}_id': value})
+    if filters.get('batch'):
+        students = students.filter(batchmembership__batch_id=filters['batch'], batchmembership__is_active=True)
     for key, lookup in [('date_from','submitted_at__date__gte'),('date_to','submitted_at__date__lte')]:
         if filters.get(key):
             submissions = submissions.filter(**{lookup: filters[key]})
@@ -43,7 +50,7 @@ def analytics(user, filters=None):
         access = access.filter(assignment__in=assignments)
         submissions = submissions.filter(assignment__in=assignments)
     all_submissions = list(submissions.order_by('started_at'))
-    verified = [s for s in all_submissions if s.status == 'evaluated' and (user.role == 'trainer' or s.assignment.results_released)]
+    verified = [s for s in all_submissions if s.status == 'evaluated' and (user.role != 'student' or s.assignment.results_released)]
     # One best result per student/assignment prevents multiple attempts inflating totals.
     best = {}
     for sub in verified:
@@ -78,8 +85,8 @@ def analytics(user, filters=None):
     result = {
         'metrics': {
             'total_students': students.count(), 'active_students': students.filter(is_active=True).count(),
-            'total_courses': Course.objects.filter(trainer=trainer).count() if user.role == 'trainer' else assignments.values('course').distinct().count(),
-            'total_topics': Topic.objects.filter(course__trainer=trainer).count() if user.role == 'trainer' else assignments.exclude(topic=None).values('topic').distinct().count(),
+            'total_courses': visible_courses(user).count() if user.role != 'student' else assignments.values('course').distinct().count(),
+            'total_topics': Topic.objects.filter(course__in=visible_courses(user)).count() if user.role != 'student' else assignments.exclude(topic=None).values('topic').distinct().count(),
             'total_assignments': assignments.count(), 'published_assignments': assignments.filter(status='published').count(),
             'total_submissions': sum(s.status in ['submitted','evaluated'] for s in all_submissions),
             'pending_evaluations': sum(s.status == 'submitted' for s in all_submissions),
@@ -97,11 +104,11 @@ def analytics(user, filters=None):
         'activity': [{'date':k, 'attempts':v} for k,v in sorted(activity.items())][-30:],
         'distribution': distribution,
         'recent_submissions': [{'id': s.pk, 'assignment': s.assignment.title, 'student': s.student.name,
-            'status': s.status if user.role == 'trainer' or s.assignment.results_released else ('in_progress' if s.status == 'in_progress' else 'submitted'),
+            'status': s.status if user.role != 'student' or s.assignment.results_released else ('in_progress' if s.status == 'in_progress' else 'submitted'),
             'percentage': float(s.percentage) if s in verified else None, 'date': s.started_at} for s in recent],
         'upcoming': [{'id': a.pk, 'title': a.title, 'deadline': a.deadline, 'difficulty': a.difficulty} for a in upcoming],
     }
-    if user.role == 'trainer':
+    if user.role != 'student':
         result['recent_activity'] = list(AuditLog.objects.filter(actor__in=[user.pk, *students.values_list('id', flat=True)]).order_by('-created_at').values('action','created_at')[:10])
         per_student = defaultdict(list)
         for s in results:

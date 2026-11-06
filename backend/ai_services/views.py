@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from core.api import IsTrainer, AIThrottle
 from core.models import audit
 from courses.models import Course, Topic
+from core.access import visible_courses
 from materials.models import StudyMaterial
 from assignments.models import Assignment, QUESTION_TYPES
 from assignments.serializers import AssignmentSerializer
@@ -17,7 +18,8 @@ class GenerateConfig(serializers.Serializer):
     course = serializers.IntegerField()
     topic = serializers.IntegerField(required=False, allow_null=True)
     material = serializers.IntegerField(required=False, allow_null=True)
-    number_of_questions = serializers.IntegerField(min_value=1, max_value=20)
+    number_of_questions = serializers.IntegerField(min_value=1, max_value=1)
+    batch = serializers.IntegerField(required=False, allow_null=True)
     question_types = serializers.ListField(child=serializers.ChoiceField(choices=QUESTION_TYPES), min_length=1, max_length=11)
     difficulty = serializers.ChoiceField(choices=['easy','medium','hard','mixed'], default='medium')
     total_marks = serializers.DecimalField(max_digits=7, decimal_places=2, min_value=1, max_value=10000)
@@ -38,11 +40,13 @@ class GenerateAssignmentView(APIView):
         validator = GenerateConfig(data=request.data)
         validator.is_valid(raise_exception=True)
         config = validator.validated_data
-        course = get_object_or_404(Course, pk=config['course'], trainer=request.user)
+        course = get_object_or_404(visible_courses(request.user), pk=config['course'])
         material = get_object_or_404(StudyMaterial, pk=config['material'], course=course, trainer=request.user) if config.get('material') else None
         topic = get_object_or_404(Topic, pk=config['topic'], course=course) if config.get('topic') else None
         if not material and not topic and not config.get('instructions'):
             raise serializers.ValidationError('Select material or a topic, or provide detailed topic instructions.')
+        preflight = AssignmentSerializer(data={k: v for k, v in config.items() if k not in ['number_of_questions', 'question_types', 'instructions', 'total_marks']}, context={'request': request})
+        preflight.is_valid(raise_exception=True)
         draft = generate_assignment(request.user, config, material, topic)
         if len(draft['questions']) != config['number_of_questions'] or any(q['type'] not in config['question_types'] for q in draft['questions']):
             raise serializers.ValidationError('Generated questions do not match your configuration. Retry generation.')

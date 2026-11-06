@@ -1,9 +1,8 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView
-from accounts.views import LoginView, ProfileView, LogoutView, StudentViewSet, AcceptInvitationView, PasswordResetView, PasswordResetConfirmView, ChangePasswordView
-from courses.views import CourseViewSet, TopicViewSet
+from accounts.views import LoginView, ProfileView, LogoutView, StudentViewSet, StaffViewSet, AccessRefreshView
+from courses.views import CourseViewSet, TopicViewSet, BatchViewSet
 from materials.views import MaterialViewSet
 from assignments.views import AssignmentViewSet
 from submissions.views import SubmissionViewSet
@@ -15,6 +14,8 @@ from core.views import HealthView, NotificationViewSet, SettingsView
 
 router = DefaultRouter()
 router.register('admin/students', StudentViewSet, basename='students')
+router.register('staff', StaffViewSet, basename='staff')
+router.register('batches', BatchViewSet, basename='batches')
 router.register('courses', CourseViewSet, basename='courses')
 router.register('topics', TopicViewSet, basename='topics')
 router.register('materials', MaterialViewSet, basename='materials')
@@ -27,13 +28,9 @@ urlpatterns = [
     path('django-admin/', admin.site.urls),
     path('api/health/', HealthView.as_view()),
     path('api/auth/login/', LoginView.as_view()),
-    path('api/auth/token/refresh/', TokenRefreshView.as_view()),
+    path('api/auth/token/refresh/', AccessRefreshView.as_view()),
     path('api/auth/logout/', LogoutView.as_view()),
     path('api/auth/profile/', ProfileView.as_view()),
-    path('api/auth/change-password/', ChangePasswordView.as_view()),
-    path('api/auth/password-reset/', PasswordResetView.as_view()),
-    path('api/auth/password-reset/confirm/', PasswordResetConfirmView.as_view()),
-    path('api/auth/invitations/accept/', AcceptInvitationView.as_view()),
     path('api/admin/dashboard/', AdminDashboardView.as_view()),
     path('api/student/dashboard/', DashboardView.as_view()),
     path('api/student/performance/', DashboardView.as_view()),

@@ -42,7 +42,7 @@ class GeneratedQuestion(StrictModel):
 
 class GeneratedAssignment(StrictModel):
     description: str = Field(max_length=6000)
-    questions: list[GeneratedQuestion] = Field(min_length=1, max_length=30)
+    questions: list[GeneratedQuestion] = Field(min_length=1, max_length=1)
 
     @model_validator(mode='after')
     def validate_questions(self):

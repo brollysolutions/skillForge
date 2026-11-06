@@ -33,15 +33,14 @@ class SubpathDeploymentTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response['Location'].startswith('/skillforge/django-admin/login/'), response['Location'])
 
-    def test_invitation_and_reset_links_use_deployed_path(self):
+    def test_email_only_login_under_deployed_path_sends_no_mail(self):
         self.api.force_authenticate(self.trainer)
-        response = self.api.post('/api/admin/students/invite/', {'name': 'Student', 'email': 'learner@subpath.test'})
+        response = self.api.post('/api/admin/students/', {'name':'Student', 'email':'learner@subpath.test'})
         self.assertEqual(response.status_code, 201)
-        self.assertIn('https://brollysolutions.in/skillforge/accept-invitation?token=', mail.outbox[-1].body)
         self.api.force_authenticate(None)
-        response = self.api.post('/api/auth/password-reset/', {'email': self.trainer.email})
+        response = self.api.post('/api/auth/login/', {'email':'learner@subpath.test'})
         self.assertEqual(response.status_code, 200)
-        self.assertIn('https://brollysolutions.in/skillforge/reset-password?uid=', mail.outbox[-1].body)
+        self.assertEqual(len(mail.outbox), 0)
 
     def test_api_health_under_proxy_stripped_path(self):
         response = self.api.get('/api/health/', secure=True)

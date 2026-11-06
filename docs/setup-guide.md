@@ -2,11 +2,9 @@
 
 ## Environment
 
-Use the commands in the root README to install dependencies and create the first trainer. Copy `backend/.env.example` to `backend/.env`; never commit the real file. Replace the development secret before deploying. The frontend needs only the API base URL; it never receives provider or SMTP credentials.
+Use the commands in the root README to install dependencies and create the first admin. Copy `backend/.env.example` to `backend/.env`; never commit the real file. Replace the development secret before deploying. The frontend needs only the API base URL; it never receives provider or SMTP credentials.
 
-A fresh database has no seeded accounts or results. A local trainer account may already have been created when starting the app interactively; existing accounts are preserved. `createsuperuser` creates a trainer because the custom user manager assigns the trainer role. Trainers can add student access directly using a name and unique email, with no email delivery. The generated password is shown once for the trainer to share. Students can change it from Profile; trainers can reset it from Students. Email invitations remain an optional alternative. Invitations expire after three days and are single-use; resending invalidates the old link.
-
-The local console email backend prints invitation and password-reset links to the server terminal. For real email delivery set `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`, SMTP host, port, credentials, TLS, and a verified sender. Set `FRONTEND_URL` to the public frontend URL so emails contain the correct links.
+A fresh database has no seeded accounts or results. Run `python backend/manage.py bootstrap_admin your-email@example.com --name "Your Name"` after migrations to create the single admin. An existing single superuser is promoted to admin; other trainers are preserved. The admin adds sales and trainer access; sales/trainers can add students by name and email. All users sign in by typing their approved email, with no password or email message. This does not verify email ownership. See [the team/batch guide](team-batches.md) for details and the full workflow.
 
 ## AI setup
 

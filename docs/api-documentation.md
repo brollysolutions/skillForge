@@ -1,5 +1,7 @@
 # API reference
 
+See [current team, batch, and email-only API changes](team-batches.md#api-additions). These replace the former password/invitation flow.
+
 Base URL: `/api/`. All endpoints require `Authorization: Bearer <access-token>` unless marked public. JSON request/response bodies are used except file upload (multipart) and downloads (PDF/CSV/original document).
 
 Collection endpoints use `page` and `page_size` (default 20, maximum 100) and return `{count,next,previous,results}`. Detail endpoints return objects. Errors use a `detail` message or field-error mapping. Typical statuses: 400 validation, 401 unauthenticated, 403 wrong role, 404 inaccessible object, 409 conflict/dependency, 429 throttle, 503 external provider unavailable. No private media directory is publicly served.
@@ -9,22 +11,15 @@ Collection endpoints use `page` and `page_size` (default 20, maximum 100) and re
 | Method and path | Role | Request / behavior |
 | --- | --- | --- |
 | GET `health/` | Public | Service liveness; no sensitive configuration |
-| POST `auth/login/` | Public | `{email,password}` → `{access,refresh,user}` |
+| POST `auth/login/` | Public | `{email}` → `{access,refresh,user}` |
 | POST `auth/token/refresh/` | Public | `{refresh}` → rotated access/refresh pair; old refresh blacklisted |
 | POST `auth/logout/` | Signed in | `{refresh}` belonging to current user; blacklists it; 204 |
 | GET/PATCH `auth/profile/` | Signed in | Own profile; patch only `name`, `bio` |
-| POST `auth/change-password/` | Signed in | `{current_password,password}`; validates both, changes password without email, requires signing in again |
-| POST `auth/password-reset/` | Public | `{email}`; generic response; console/SMTP reset link |
-| POST `auth/password-reset/confirm/` | Public | `{uid,token,password}`; Django password validation and one-use reset token |
-| POST `auth/invitations/accept/` | Public | `{token,password}`; activates student linked to inviting trainer |
-| GET `admin/students/` | Trainer | Own students; `search` matches name/email |
-| POST `admin/students/` | Trainer | `{name,email}`; immediately creates an active student without email; returns `{student,initial_password,detail}` with `Cache-Control: no-store`. Share the generated password directly. |
-| POST `admin/students/{id}/reset-access/` | Trainer | Generate a new password for own student without email; return sign-in details once and invalidate old password/access tokens |
-| GET/PATCH `admin/students/{id}/` | Trainer | Read own student; patch `name`, `bio`, `is_active` |
-| POST `admin/students/invite/` | Trainer | `{name,email}`; creates/resends invitation; returns no raw token |
-| GET `admin/students/invitations/` | Trainer | Pending invitations and expiration dates |
+| GET `admin/students/` | Admin, sales, trainer | All students for managers, own/batch students for trainers; `search` matches name/email |
+| POST `admin/students/` | Admin, sales, trainer | `{name,email}`; grants active email-only access without sending mail; returns `{student,detail}`. |
+| GET/PATCH `admin/students/{id}/` | Admin, sales, trainer | Read accessible student; patch `name`, `bio`, `is_active` |
 
-There is no public signup endpoint or email-only login. Trainers authorize unique email addresses and share initial passwords directly. Email invitation endpoints remain available as an optional alternative, but the Students screen does not send mail.
+There is no public signup. Staff approve personal email addresses. Email-only login does not verify ownership; anyone who knows an approved email can access that account.
 
 ## Courses, topics, materials
 
@@ -88,7 +83,7 @@ Assignment payload:
 }
 ```
 
-Question types: `mcq`, `multiple_select`, `fill_blank`, `short_answer`, `descriptive`, `coding`, `debugging`, `output_prediction`, `scenario`, `genai_practical`, `project`. Written/practical/project questions require `rubric`. Coding/debugging require at least one sample and one hidden `test_cases` record, each `{input,expected_output,is_hidden,weight}`; additional fields are `constraints`, `input_format`, `output_format`, `starter_code`, `language` (Python only). Maximum 50 manually authored questions, 20 generated questions, 20 tests per coding question.
+Question types: `mcq`, `multiple_select`, `fill_blank`, `short_answer`, `descriptive`, `coding`, `debugging`, `output_prediction`, `scenario`, `genai_practical`, `project`. Written/practical/project questions require `rubric`. New coding/debugging tasks use one visible `test_cases` record, each `{input,expected_output,is_hidden,weight}`; additional fields are `constraints`, `input_format`, `output_format`, `starter_code`, `language` (Python only). New manual and generated assignments use one task and one output check. Legacy assessments remain readable and gradable.
 
 Generation uses assignment configuration plus `material?`, `number_of_questions`, `question_types`, `total_marks`, `learning_objectives?`, `instructions?`. Supply material, a topic, or detailed manual instructions. Response is a saved draft assignment. Invalid counts, types, marks, answer structures or test cases prevent saving.
 
@@ -122,7 +117,7 @@ Final code grading happens through the same submission endpoint as all other que
 | GET `admin/dashboard/` | Trainer | Database-driven classroom metrics, charts, deadlines, recent events, student summary |
 | GET `student/dashboard/` | Signed in | Authenticated user's role-scoped dashboard |
 | GET `student/performance/` | Signed in | Same role-scoped analytics |
-| GET `analytics/overview/` | Signed in | Students always use self; trainers can filter `course`, `topic`, `student`, `assignment`, `date_from`, `date_to` |
+| GET `analytics/overview/` | Signed in | Students always use self; admin/sales/trainers can filter `batch`, `course`, `topic`, `student`, `assignment`, `date_from`, `date_to` |
 | GET `analytics/student/{id}/` | Trainer | Own student analytics |
 | GET `analytics/course/{id}/` | Trainer | Own course analytics |
 | GET `analytics/assignment/{id}/` | Trainer | Own assessment analytics |

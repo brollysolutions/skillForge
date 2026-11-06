@@ -12,11 +12,13 @@ from courses.models import Course
 from assignments.models import Assignment
 from submissions.models import Submission
 from core.api import IsTrainer
+from core.access import IsStaffRole, visible_students, visible_courses
 from core.models import PlatformSettings
 from .services import analytics
 
 
 class AnalyticsFilter(serializers.Serializer):
+    batch = serializers.IntegerField(required=False, min_value=1)
     course = serializers.IntegerField(required=False, min_value=1)
     topic = serializers.IntegerField(required=False, min_value=1)
     student = serializers.IntegerField(required=False, min_value=1)
@@ -35,27 +37,27 @@ class DashboardView(APIView):
 
 
 class AdminDashboardView(DashboardView):
-    permission_classes = [IsTrainer]
+    permission_classes = [IsStaffRole]
 
 
 class ScopedAnalyticsView(APIView):
-    permission_classes = [IsTrainer]
+    permission_classes = [IsStaffRole]
 
     def get(self, request, kind, pk):
         if kind not in ['student', 'course', 'assignment']:
             from rest_framework.exceptions import NotFound
             raise NotFound()
         if kind == 'student':
-            get_object_or_404(User, pk=pk, trainer=request.user, role='student')
+            get_object_or_404(visible_students(request.user), pk=pk)
         elif kind == 'course':
-            get_object_or_404(Course, pk=pk, trainer=request.user)
+            get_object_or_404(visible_courses(request.user), pk=pk)
         else:
-            get_object_or_404(Assignment, pk=pk, trainer=request.user)
+            get_object_or_404(Assignment.objects.all() if request.user.role in ('admin', 'sales') else Assignment.objects.filter(trainer=request.user), pk=pk)
         return Response(analytics(request.user, {kind: pk}))
 
 
 class ExportAnalyticsView(APIView):
-    permission_classes = [IsTrainer]
+    permission_classes = [IsStaffRole]
 
     def get(self, request):
         filters = AnalyticsFilter(data=request.query_params)
@@ -81,6 +83,8 @@ class ExportAnalyticsView(APIView):
 class LeaderboardView(APIView):
     def get(self, request):
         trainer = request.user if request.user.role == 'trainer' else request.user.trainer
+        if not trainer:
+            return Response({'enabled': False, 'rankings': []})
         settings, _ = PlatformSettings.objects.get_or_create(trainer=trainer)
         if not settings.leaderboard_enabled:
             return Response({'enabled': False, 'rankings': []})

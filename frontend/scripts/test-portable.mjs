@@ -7,7 +7,7 @@ const subpath=process.argv.includes('--subpath');
 if(integration){
   process.env.SKILLFORGE_E2E='1';
   process.env.SF_E2E_CREDENTIALS=fs.readFileSync(path.join(frontend,'../.task-temp/browser-credentials.json'),'utf8');
-  process.env.VITE_API_URL=subpath?'http://127.0.0.1:5174/skillforge/api':'http://127.0.0.1:5173/api';
+  process.env.VITE_API_URL=process.env.SF_E2E_API_URL||(subpath?'http://127.0.0.1:5174/skillforge/api':'http://127.0.0.1:5173/api');
 }
 const {startVitest}=await import('vitest/node');
 const {default:createConfig}=await import('../vite.portable.config.js');

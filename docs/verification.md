@@ -1,5 +1,26 @@
 # Verification record
 
+## UI and tag review - November 6, 2026
+
+- The final portable production build and trainer-to-student lifecycle against the isolated live API pass, including saving answers, submission, closing, releasing, and viewing results.
+- Reviewed shared buttons, input labels, status badges, tables, dialogs, navigation, and all 47 role-specific page views at desktop (1440px) and mobile (390px) widths. Additional browser checks cover assignment detail/editing, submissions, reports, individual student performance, and the student answer workspace.
+- The UI audit verifies named controls, associated labels, one main heading, valid status tags, no page-level horizontal overflow, no nested interactive elements, and no visible API error states. Keyboard checks cover Escape dismissal, dialog names, restored focus, and mobile navigation. All four roles were checked in dark mode.
+- Refined typography, spacing, dashboard cards, role-specific wording, forms, and responsive layouts. Status tags use explicit semantic colors and readable labels; they stay on one line inside horizontally scrollable tables. Output mismatches use failure icons and colors. Repaired punctuation encoding in ten frontend files.
+- Seven component tests pass. Ten Chrome scenarios (four workflow checks and six UI audits) pass across the verification runs. Screenshots of role dashboards and the mobile output-comparison view are under `artifacts/ui-*.png`. Production builds use the portable Vite configuration in this environment.
+- Browser fixtures remain isolated in `.task-temp/browser.sqlite3`; `scripts/prepare-e2e.py` now also prepares marked report/submission detail fixtures. Live AI generation, delivery, and external code execution are outside this UI review.
+
+
+## Team, batches, and email-only update — November 6, 2026
+
+- 72 Django tests pass, including sales/admin permissions, trainer batch isolation, student enrollment across trainers, automatic assignment access, deadline validation, single-task generation validation, uploaded question extraction, output comparison, and revoked session refresh.
+- Django system checks and `makemigrations --check --dry-run` pass. Local database migrations were applied after creating `.task-temp/before-team-batches.sqlite3` as a backup.
+- The portable production build and all four component tests pass. Monaco is absent in this local dependency cache; the existing plain-text code editor fallback is used.
+- The rendered trainer-to-student lifecycle passes against a live, isolated Django API: email login, student provisioning, manual assignment, submit, close/release, and student result review.
+- Four Chrome browser scenarios pass: desktop/mobile sign-in, trainer routes, sales course/batch enrollment followed by trainer publishing and student access, and admin team/performance pages. Tests used the compiled frontend and `.task-temp/browser.sqlite3`, never the normal database. The Playwright bundled browser was unavailable, so the installed Chrome channel was used. Screenshots are under `artifacts/`.
+- Provider behavior was verified with mocks; no live AI request or isolated-code-executor call was made for this update. Production hosting has not been deployed. Email-only login is an explicit requested product decision and does not verify who owns an email; see [access model](team-batches.md).
+
+The sections below record earlier verification history.
+
 ## Completed in this workspace
 
 - Docker deployment files added for the `/skillforge/` subpath: non-root API and

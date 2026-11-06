@@ -22,7 +22,8 @@ class MaterialSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         course = attrs.get('course', getattr(self.instance, 'course', None))
         topic = attrs.get('topic', getattr(self.instance, 'topic', None))
-        if not course or course.trainer_id != self.context['request'].user.id:
+        from core.access import visible_courses
+        if not course or not visible_courses(self.context['request'].user).filter(pk=course.pk).exists():
             raise serializers.ValidationError('Invalid course.')
         if topic and topic.course_id != course.pk:
             raise serializers.ValidationError('Topic must belong to the selected course.')

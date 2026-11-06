@@ -10,6 +10,7 @@ QUESTION_TYPES = [(key, key.replace('_', ' ').title()) for key in [
 class Assignment(Timestamped):
     trainer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     course = models.ForeignKey('courses.Course', on_delete=models.PROTECT, related_name='assignments')
+    batch = models.ForeignKey('courses.Batch', on_delete=models.PROTECT, related_name='assignments', null=True, blank=True)
     topic = models.ForeignKey('courses.Topic', on_delete=models.PROTECT, null=True, blank=True)
     material = models.ForeignKey('materials.StudyMaterial', on_delete=models.SET_NULL, null=True, blank=True)
     title = models.CharField(max_length=200)

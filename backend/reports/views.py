@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from accounts.models import User
 from core.api import IsTrainer, AIThrottle
+from core.access import visible_students
 from core.models import audit, Notification, PlatformSettings
 from assignments.views import accessible_assignments
 from .models import PerformanceReport, BatchReport
@@ -77,7 +78,7 @@ class GenerateReportView(APIView):
     throttle_classes = [AIThrottle]
 
     def post(self, request, student_id):
-        student = get_object_or_404(User, pk=student_id, trainer=request.user, role='student')
+        student = get_object_or_404(visible_students(request.user), pk=student_id)
         report = build_report(request.user, student)
         return Response(ReportSerializer(report, context={'request': request}).data, status=201)
 
@@ -86,11 +87,11 @@ class LearningPathView(APIView):
     def get(self, request):
         if request.user.role != 'student':
             raise serializers.ValidationError('Use individual reports to review student recommendations.')
-        settings, _ = PlatformSettings.objects.get_or_create(trainer=request.user.trainer)
-        if not settings.recommendations_enabled:
-            return Response([])
         report = PerformanceReport.objects.filter(student=request.user, published_at__isnull=False).order_by('-created_at').first()
         if not report or not report.recommendations_enabled:
+            return Response([])
+        settings, _ = PlatformSettings.objects.get_or_create(trainer=report.trainer)
+        if not settings.recommendations_enabled:
             return Response([])
         available = accessible_assignments(request.user).filter(status='published')
         return Response([{'id': r.pk, 'topic': r.topic.title, 'reason': r.reason, 'steps': r.steps, 'difficulty': r.difficulty,

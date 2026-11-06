@@ -44,8 +44,8 @@ class QuestionSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Provide accepted answers.')
         if kind in ['coding', 'debugging']:
             cases = attrs.get('test_cases', [])
-            if not cases or len(cases) > 20 or not any(c.get('is_hidden', True) for c in cases) or not any(not c.get('is_hidden', True) for c in cases):
-                raise serializers.ValidationError('Coding questions require sample and hidden tests (20 tests maximum).')
+            if not cases or len(cases) > 20 or not any(not c.get('is_hidden', True) for c in cases):
+                raise serializers.ValidationError('Coding questions require a visible expected-output check (20 tests maximum for legacy assessments).')
             if attrs.get('language', 'python') != 'python':
                 raise serializers.ValidationError('Only Python is supported.')
         if kind in ['short_answer', 'descriptive', 'scenario', 'genai_practical', 'project'] and not attrs.get('rubric', '').strip():
@@ -69,11 +69,12 @@ class AssignmentSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, required=False)
     course_title = serializers.CharField(source='course.title', read_only=True)
     topic_title = serializers.CharField(source='topic.title', read_only=True, default='General')
+    batch_title = serializers.CharField(source='batch.title', read_only=True, default='')
     assigned_count = serializers.IntegerField(source='access_records.count', read_only=True)
 
     class Meta:
         model = Assignment
-        fields = ['id', 'course', 'course_title', 'topic', 'topic_title', 'material', 'title', 'description', 'learning_objectives',
+        fields = ['id', 'batch', 'batch_title', 'course', 'course_title', 'topic', 'topic_title', 'material', 'title', 'description', 'learning_objectives',
                   'difficulty', 'status', 'total_marks', 'duration_minutes', 'attempts_allowed', 'passing_percentage', 'starts_at',
                   'deadline', 'hints_enabled', 'results_released', 'questions', 'assigned_count', 'created_at', 'published_at']
         read_only_fields = ['status', 'total_marks', 'results_released', 'published_at']
@@ -83,8 +84,14 @@ class AssignmentSerializer(serializers.ModelSerializer):
         course = attrs.get('course', getattr(self.instance, 'course', None))
         topic = attrs.get('topic', getattr(self.instance, 'topic', None))
         material = attrs.get('material', getattr(self.instance, 'material', None))
-        if not course or course.trainer_id != user.id:
+        from core.access import visible_courses
+        if not course or not visible_courses(user).filter(pk=course.pk).exists():
             raise serializers.ValidationError('Invalid course.')
+        batch = attrs.get('batch', getattr(self.instance, 'batch', None))
+        if batch and (batch.trainer_id != user.id or batch.course_id != course.pk or not batch.is_active):
+            raise serializers.ValidationError('Choose an active batch you teach in this course.')
+        if batch and not attrs.get('deadline', getattr(self.instance, 'deadline', None)):
+            raise serializers.ValidationError('Set a deadline for this batch assignment.')
         if topic and topic.course_id != course.pk:
             raise serializers.ValidationError('Topic must belong to the course.')
         if material and (material.trainer_id != user.id or material.course_id != course.pk):
@@ -102,6 +109,10 @@ class AssignmentSerializer(serializers.ModelSerializer):
         if self.instance and self.instance.status != 'draft':
             raise serializers.ValidationError('Published assessments are immutable. Create a new draft for changes.')
         questions = attrs.get('questions', [])
+        if len(questions) > 1:
+            raise serializers.ValidationError('Use one focused task per assignment.')
+        if any(len(q.get('test_cases', [])) > 1 for q in questions):
+            raise serializers.ValidationError('Use one expected-output check per task.')
         if len(questions) > 50:
             raise serializers.ValidationError('Maximum 50 questions.')
         titles = [q['title'].strip().lower() for q in questions]
@@ -136,6 +147,7 @@ class AssignmentSerializer(serializers.ModelSerializer):
 
 
 class StudentAssignmentSerializer(serializers.ModelSerializer):
+    batch_title = serializers.CharField(source='batch.title', read_only=True, default='')
     questions = serializers.SerializerMethodField()
     course_title = serializers.CharField(source='course.title', read_only=True)
     topic_title = serializers.CharField(source='topic.title', read_only=True, default='General')
@@ -144,7 +156,7 @@ class StudentAssignmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Assignment
-        fields = ['id', 'title', 'description', 'course_title', 'topic_title', 'difficulty', 'status', 'total_marks',
+        fields = ['id', 'title', 'description', 'batch_title', 'course_title', 'topic_title', 'difficulty', 'status', 'total_marks',
                   'duration_minutes', 'attempts_allowed', 'passing_percentage', 'starts_at', 'deadline', 'hints_enabled',
                   'results_released', 'questions', 'student_status', 'attempts_used']
 

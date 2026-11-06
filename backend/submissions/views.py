@@ -18,12 +18,12 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         qs = Submission.objects.select_related('assignment', 'student').prefetch_related('responses__question').order_by('-started_at')
         if self.request.user.role == 'trainer':
             qs = qs.filter(assignment__trainer=self.request.user)
-        else:
+        elif self.request.user.role == 'student':
             qs = qs.filter(student=self.request.user)
         for key in ['assignment', 'status']:
             if self.request.query_params.get(key):
                 qs = qs.filter(**{key: self.request.query_params[key]})
-        if self.request.user.role == 'trainer' and self.request.query_params.get('student'):
+        if self.request.user.role != 'student' and self.request.query_params.get('student'):
             qs = qs.filter(student_id=self.request.query_params['student'])
         return qs
 

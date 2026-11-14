@@ -109,7 +109,7 @@ class TeamBatchTests(TestCase):
         self.assertEqual(self.api.get('/api/student/learning-path/').status_code, 200)
         self.assertEqual(self.api.get('/api/leaderboard/').status_code, 200)
 
-    def test_deadline_and_batch_isolation_and_single_task(self):
+    def test_deadline_and_batch_isolation_and_question_limit(self):
         self.assertEqual(self.draft(deadline=None).status_code, 400)
         foreign = Batch.objects.create(course=self.course, trainer=self.other, title='Other batch')
         self.assertEqual(self.draft(batch=foreign.pk).status_code, 400)
@@ -117,7 +117,8 @@ class TeamBatchTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(self.api.post(f"/api/assignments/{response.data['id']}/publish/").status_code, 400)
         q = {'title':'One', 'prompt':'Write a response.', 'marks':10, 'type':'short_answer', 'rubric':'Clear response'}
-        self.assertEqual(self.draft(questions=[q, {**q,'title':'Two'}]).status_code, 400)
+        self.assertEqual(self.draft(questions=[q, {**q,'title':'Two'}]).status_code, 201)
+        self.assertEqual(self.draft(questions=[{**q, 'title':f'Question {i}'} for i in range(11)]).status_code, 400)
         self.assertEqual(self.api.post('/api/ai/generate-assignment/', {'number_of_questions':2}, format='json').status_code, 400)
 
     def test_upload_imports_one_question_and_rejects_bad_files(self):

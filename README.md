@@ -42,9 +42,9 @@ On macOS/Linux use `.venv/bin/python` instead of `.venv\Scripts\python.exe` and 
 1. Admin adds sales/trainer access under **Team access**. Admin or sales creates courses and batches, assigns their trainers, and enrolls students.
 2. Open **Students ? Add student**, enter their name and personal email, and click **Grant access**. The student signs in by typing that email. No password or email is sent. Email-only access does not verify ownership: anyone who knows an approved email can enter that account.
 3. Upload a PDF, DOCX, TXT, PPTX, Python script (`.py`), or Jupyter notebook (`.ipynb`), or enter notes. Python indentation is preserved; notebooks contribute code, Markdown, and raw cell sources in order, without outputs or attachments. Uploaded code is never executed. Analyze with Groq, review and edit the summary and extracted concepts, then approve them.
-4. Open a batch and create/upload one task or generate one with AI. Set its deadline and duration. Coding tasks use one visible input and expected output; written tasks use a review rubric.
+4. Open a batch and create an assignment with up to 10 individual questions, entered manually, uploaded one at a time, or generated with AI. Set its deadline and duration. Each coding question has its own visible input and expected output; written questions use a review rubric.
 5. Review and publish the draft. Current batch members receive access automatically. For older or unbatched work, assign students explicitly.
-6. Students start timed attempts, save answers, and run sample tests through the selected isolated runner. For a Python task, **Check & complete** saves and completes matching output, or lets the student fix a mismatch. See the [salary assignment walkthrough](docs/coding-assignments.md). Use [self-hosted Piston](docs/piston-setup.md) without a paid execution API subscription.
+6. Students start timed attempts, save answers, and run sample tests through the selected isolated runner. Students use **Check question** to save and check each Python answer independently, or **Check & complete** for a single-question assignment. Matched questions retain their completion status; all questions passing completes the assignment. See the [salary assignment walkthrough](docs/coding-assignments.md). Use [self-hosted Piston](docs/piston-setup.md) without a paid execution API subscription.
 7. Review written answers. AI feedback is advisory; only backend grading and trainer-reviewed marks are official.
 8. Close the assessment or wait for its deadline, finish pending evaluations, and release results.
 9. Generate a Gemini performance report, review it, and publish it. Students see their own published reports and approved learning recommendations.
@@ -90,6 +90,7 @@ See [verification notes](docs/verification.md) for the actual checks completed i
 - [Architecture and security decisions](docs/architecture.md)
 - [Database and scoring rules](docs/database.md)
 - [API reference](docs/api-documentation.md)
+- [Ten individual Python practice questions](docs/python-practice-10-questions.md)
 - [Verification and remaining operational work](docs/verification.md)
 
 Core pages are connected to the API. Optional conversational coding hints, persisted leaderboard snapshots, and coding streaks are not enabled in this initial version. The leaderboard derives badges and best-result points without a separate claim endpoint.

@@ -112,12 +112,10 @@ class AssignmentSerializer(serializers.ModelSerializer):
         if self.instance and self.instance.status != 'draft':
             raise serializers.ValidationError('Published assessments are immutable. Create a new draft for changes.')
         questions = attrs.get('questions', [])
-        if len(questions) > 1:
-            raise serializers.ValidationError('Use one focused task per assignment.')
+        if len(questions) > 10:
+            raise serializers.ValidationError('Maximum 10 questions per assignment.')
         if any(len(q.get('test_cases', [])) > 1 for q in questions):
-            raise serializers.ValidationError('Use one expected-output check per task.')
-        if len(questions) > 50:
-            raise serializers.ValidationError('Maximum 50 questions.')
+            raise serializers.ValidationError('Use one expected-output check per question.')
         titles = [q['title'].strip().lower() for q in questions]
         if len(titles) != len(set(titles)):
             raise serializers.ValidationError('Remove duplicate question titles.')

@@ -18,7 +18,7 @@ class GenerateConfig(serializers.Serializer):
     course = serializers.IntegerField()
     topic = serializers.IntegerField(required=False, allow_null=True)
     material = serializers.IntegerField(required=False, allow_null=True)
-    number_of_questions = serializers.IntegerField(min_value=1, max_value=1)
+    number_of_questions = serializers.IntegerField(min_value=1, max_value=10)
     batch = serializers.IntegerField(required=False, allow_null=True)
     question_types = serializers.ListField(child=serializers.ChoiceField(choices=QUESTION_TYPES), min_length=1, max_length=11)
     difficulty = serializers.ChoiceField(choices=['easy','medium','hard','mixed'], default='medium')

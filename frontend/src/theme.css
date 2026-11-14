@@ -223,6 +223,8 @@ tbody tr:hover { background: var(--surface-subtle); }
 .question-types label { border-color: var(--border-strong); border-radius: var(--radius-sm); font-size: 13px; }
 .question-types label.selected, .quiz-option.selected, .question-nav>button.selected, .assessment-nav button.active { border-color: var(--primary); background: var(--primary-soft); color: var(--text); }
 .assessment-nav button.answered { background: var(--positive-bg); border-color: var(--positive-border); color: var(--positive); }
+.assessment-nav button.completed { display: inline-flex; align-items: center; justify-content: center; gap: 2px; background: var(--positive-bg); border-color: var(--positive-border); color: var(--positive); }
+.assessment-nav button.completed.active { outline: 2px solid var(--primary); outline-offset: 2px; }
 .section-number>span { background: var(--surface-subtle); color: var(--text); border: 1px solid var(--border); font-family: var(--font-mono); }
 .tabs button { font-size: 13.5px; }
 .tabs button.active { color: var(--text); border-color: var(--primary); font-weight: 600; }

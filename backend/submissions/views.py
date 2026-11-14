@@ -8,7 +8,7 @@ from core.api import IsTrainer, AIThrottle, CodeThrottle
 from core.models import audit
 from .models import Submission, QuestionResponse, Evaluation
 from .serializers import SubmissionSerializer
-from .services import save_answers, finalize, recalculate
+from .services import save_answers, finalize, recalculate, check_question
 
 
 class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
@@ -41,10 +41,13 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=True, methods=['post'], throttle_classes=[CodeThrottle], url_path='check-complete')
     def check_complete(self, request, pk=None):
-        submission = finalize(request.user, self.get_object(), request.data.get('answers'), require_correct=True)
-        results = getattr(submission, 'check_results', [])
+        question_id = request.data.get('question_id')
+        if question_id is not None and (type(question_id) is not int or question_id < 1):
+            raise serializers.ValidationError('Question ID must be a positive integer.')
+        submission, checked = check_question(request.user, self.get_object(), question_id, request.data.get('answers'))
         submission.refresh_from_db()
-        return Response({'completed': submission.task_completed, 'results': results,
+        return Response({'completed': submission.task_completed, 'question_id': checked.question_id,
+                         'question_completed': checked.question_completed, 'results': checked.execution.get('samples', []),
                          'submission': self.get_serializer(submission).data})
 
     @action(detail=True, methods=['post'], permission_classes=[IsTrainer])

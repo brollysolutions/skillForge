@@ -20,10 +20,7 @@ class Submission(Timestamped):
         if self.status != 'evaluated':
             return False
         responses = list(self.responses.all())
-        if len(responses) != 1 or responses[0].question.type not in ['coding', 'debugging']:
-            return False
-        execution = responses[0].execution
-        return bool(execution.get('total') and execution.get('passed') == execution['total'])
+        return bool(responses) and all(response.question_completed for response in responses)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['assignment','student','attempt'], name='unique_attempt')]
@@ -39,6 +36,12 @@ class QuestionResponse(Timestamped):
     feedback = models.TextField(blank=True)
     execution = models.JSONField(default=dict)
     ai_suggestion = models.JSONField(default=dict)
+
+    @property
+    def question_completed(self):
+        return bool(self.status == 'evaluated' and self.question.type in ['coding', 'debugging']
+                    and self.execution.get('total')
+                    and self.execution.get('passed') == self.execution['total'])
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['submission','question'], name='unique_question_response')]

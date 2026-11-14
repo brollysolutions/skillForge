@@ -29,7 +29,7 @@ def generate_assignment(actor, config, material=None, topic=None):
     if topic:
         evidence['topic'] = {'title': topic.title, 'description': topic.description, 'objectives': topic.learning_objectives}
     return generate_json(actor, 'groq', 'assignment.generate', GeneratedAssignment,
-        'Create exactly ONE focused task or case study grounded in the provided material/topic. Do not include multiple scenarios or case studies. Match the requested question type, difficulty and total marks. '
+        'Create exactly the requested number_of_questions as separate, self-contained questions grounded in the provided material/topic. Each question must have its own statement, starter code and expected output where applicable. Match the requested question types and difficulty; question marks must sum to total_marks. '
         'Correct answers are lists of option strings or accepted strings. MCQ has one correct option. '
         'Coding/debugging questions require exactly ONE visible test (is_hidden=false), with input and expected_output, stdin/stdout interfaces, and Python starter code. '
         'Human-reviewed question types require an explicit rubric. Do not duplicate questions. Never claim that output is published.', evidence)

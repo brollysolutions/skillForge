@@ -2,6 +2,7 @@ import unicodedata
 from datetime import timedelta
 from decimal import Decimal
 from django.db import transaction
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from assignments.models import AssignmentAccess
@@ -77,6 +78,8 @@ def validate_answers(answers, submission):
 @transaction.atomic
 def save_answers(user, submission, answers):
     require_access(user, submission.assignment)
+    if submission.student_id != user.pk:
+        raise PermissionDenied('This attempt belongs to another student.')
     require_open(submission.assignment)
     locked = Submission.objects.select_for_update().get(pk=submission.pk)
     if locked.status != 'in_progress' or locked.expires_at <= timezone.now():
@@ -85,7 +88,18 @@ def save_answers(user, submission, answers):
     if not Submission.objects.filter(pk=locked.pk, status='in_progress').update(updated_at=timezone.now()):
         raise Conflict('This attempt is being submitted.')
     for qid, answer in validate_answers(answers, locked).items():
-        QuestionResponse.objects.filter(submission=locked, question_id=qid).update(answer=answer)
+        response = QuestionResponse.objects.get(submission=locked, question_id=qid)
+        if response.answer != answer:
+            # A successful check applies only to the exact code that was checked.
+            response.answer = answer
+            response.status = 'pending'
+            response.score = Decimal('0')
+            response.execution = {}
+            response.feedback = ''
+            response.ai_suggestion = {}
+            response.save(update_fields=['answer', 'status', 'score', 'execution', 'feedback', 'ai_suggestion'])
+    update_totals(locked)
+    locked.save(update_fields=['score', 'percentage'])
 
 
 def normalized(value):
@@ -128,49 +142,91 @@ def evaluate_response(response):
     return response
 
 
-def recalculate(submission):
+def update_totals(submission):
     # Do not use a possibly prefetched relation from the read-only API queryset.
     responses = list(QuestionResponse.objects.filter(submission_id=submission.pk))
     submission.score = sum((r.score for r in responses), Decimal('0'))
     submission.percentage = (submission.score * 100 / submission.assignment.total_marks).quantize(Decimal('0.01')) if submission.assignment.total_marks else Decimal('0')
+    return responses
+
+
+def recalculate(submission):
+    responses = update_totals(submission)
     submission.status = 'submitted' if any(r.status == 'pending_review' for r in responses) else 'evaluated'
     submission.save(update_fields=['score', 'percentage', 'status', 'updated_at'])
 
 
-def finalize(user, submission, answers=None, *, require_correct=False):
+def finish_evaluation(user, submission):
+    submission.submitted_at = timezone.now()
+    submission.duration_seconds = max(0, int((min(submission.submitted_at, submission.expires_at) - submission.started_at).total_seconds()))
+    submission.save(update_fields=['submitted_at', 'duration_seconds'])
+    recalculate(submission)
+    audit(user, 'attempt.submitted', submission)
+
+
+def check_question(user, submission, question_id=None, answers=None):
     require_access(user, submission.assignment)
     if submission.student_id != user.pk:
         raise PermissionDenied('This attempt belongs to another student.')
-    if require_correct:
-        questions = list(submission.assignment.questions.all())
-        if len(questions) != 1 or questions[0].type not in ['coding', 'debugging']:
-            raise ValidationError('Check and complete is available for single Python tasks.')
+    questions = submission.assignment.questions.all()
+    if question_id is None:
+        if questions.count() != 1:
+            raise ValidationError('Select the question to check.')
+        question_id = questions.first().pk
+    question = get_object_or_404(questions, pk=question_id)
+    if question.type not in ['coding', 'debugging']:
+        raise ValidationError('Output checks are available for Python questions.')
+
+    with transaction.atomic():
+        locked = Submission.objects.select_for_update().get(pk=submission.pk)
+        if locked.status in ['submitted', 'evaluated']:
+            response = locked.responses.select_related('question').get(question=question)
+            return locked, response  # Retry after a successful final check.
+        if locked.status != 'in_progress':
+            raise Conflict('This attempt is already being processed.')
+        require_open(submission.assignment)
+        if locked.expires_at <= timezone.now():
+            raise ValidationError('Your time has ended. Submit your saved answers.')
+        if answers is not None:
+            save_answers(user, locked, answers)
+        if not Submission.objects.filter(pk=locked.pk, status='in_progress').update(status='grading', updated_at=timezone.now()):
+            raise Conflict('This attempt is already being processed.')
+
+    try:
+        response = QuestionResponse.objects.select_related('question').prefetch_related('question__test_cases').get(submission=locked, question=question)
+        if not response.question_completed:
+            response = evaluate_response(response)
+        with transaction.atomic():
+            response.save(update_fields=['score', 'status', 'feedback', 'execution'])
+            responses = list(locked.responses.select_related('question'))
+            if responses and all(r.question_completed for r in responses):
+                finish_evaluation(user, locked)
+            else:
+                locked.status = 'in_progress'
+                update_totals(locked)
+                locked.save(update_fields=['status', 'score', 'percentage', 'updated_at'])
+    except Exception:
+        Submission.objects.filter(pk=locked.pk, status='grading').update(status='in_progress')
+        raise
+    return locked, response
+
+
+def finalize(user, submission, answers=None):
+    require_access(user, submission.assignment)
+    if submission.student_id != user.pk:
+        raise PermissionDenied('This attempt belongs to another student.')
     if submission.status in ['submitted', 'evaluated']:
         return submission  # Retry-safe; no second execution or duplicate attempt.
-    if require_correct:
-        require_open(submission.assignment)
-        if submission.expires_at <= timezone.now():
-            raise ValidationError('Your time has ended. Submit your saved answers.')
     if answers is not None:
         save_answers(user, submission, answers)
     if not Submission.objects.filter(pk=submission.pk, student=user, status='in_progress').update(status='grading', updated_at=timezone.now()):
         raise Conflict('This attempt is already being processed.')
     try:
-        responses = [evaluate_response(r) for r in submission.responses.select_related('question').prefetch_related('question__test_cases')]
-        if require_correct:
-            submission.check_results = responses[0].execution.get('samples', [])
-            execution = responses[0].execution
-            if not execution.get('total') or execution.get('passed') != execution['total']:
-                Submission.objects.filter(pk=submission.pk, status='grading').update(status='in_progress')
-                submission.status = 'in_progress'
-                return submission
+        responses = [r if r.question_completed else evaluate_response(r)
+                     for r in submission.responses.select_related('question').prefetch_related('question__test_cases')]
         with transaction.atomic():
             QuestionResponse.objects.bulk_update(responses, ['score', 'status', 'feedback', 'execution'])
-            submission.submitted_at = timezone.now()
-            submission.duration_seconds = max(0, int((min(submission.submitted_at, submission.expires_at) - submission.started_at).total_seconds()))
-            submission.save(update_fields=['submitted_at', 'duration_seconds'])
-            recalculate(submission)
-            audit(user, 'attempt.submitted', submission)
+            finish_evaluation(user, submission)
     except Exception:
         Submission.objects.filter(pk=submission.pk, status='grading').update(status='in_progress')
         raise

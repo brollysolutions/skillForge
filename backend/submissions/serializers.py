@@ -3,6 +3,7 @@ from .models import Submission, QuestionResponse
 
 
 class ResponseSerializer(serializers.ModelSerializer):
+    question_completed = serializers.BooleanField(read_only=True)
     question_title = serializers.CharField(source='question.title', read_only=True)
     question_type = serializers.CharField(source='question.type', read_only=True)
     max_marks = serializers.DecimalField(source='question.marks', max_digits=8, decimal_places=2, read_only=True)
@@ -11,7 +12,7 @@ class ResponseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = QuestionResponse
-        fields = ['id', 'question', 'question_title', 'question_type', 'max_marks', 'answer', 'score', 'status', 'feedback', 'execution', 'rubric', 'explanation', 'ai_suggestion']
+        fields = ['id', 'question', 'question_title', 'question_type', 'question_completed', 'max_marks', 'answer', 'score', 'status', 'feedback', 'execution', 'rubric', 'explanation', 'ai_suggestion']
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

@@ -28,4 +28,5 @@ class RunCodeView(APIView):
                 raise serializers.ValidationError('Custom input must be text, up to 10,000 characters.')
             return Response({'results': [run_code(source, stdin)]})
         cases = question.test_cases.filter(is_hidden=False)
-        return Response({'results': [run_code(source, c.input, c.expected_output) for c in cases]})
+        return Response({'results': [{**run_code(source, c.input, c.expected_output),
+                                      'input': c.input, 'expected_output': c.expected_output} for c in cases]})

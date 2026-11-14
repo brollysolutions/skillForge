@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import serializers, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from core.api import IsTrainer, AIThrottle
+from core.api import IsTrainer, AIThrottle, CodeThrottle
 from core.models import audit
 from .models import Submission, QuestionResponse, Evaluation
 from .serializers import SubmissionSerializer
@@ -38,6 +38,14 @@ class SubmissionViewSet(viewsets.ReadOnlyModelViewSet):
         submission = finalize(request.user, self.get_object(), request.data.get('answers'))
         submission.refresh_from_db()
         return Response(self.get_serializer(submission).data)
+
+    @action(detail=True, methods=['post'], throttle_classes=[CodeThrottle], url_path='check-complete')
+    def check_complete(self, request, pk=None):
+        submission = finalize(request.user, self.get_object(), request.data.get('answers'), require_correct=True)
+        results = getattr(submission, 'check_results', [])
+        submission.refresh_from_db()
+        return Response({'completed': submission.task_completed, 'results': results,
+                         'submission': self.get_serializer(submission).data})
 
     @action(detail=True, methods=['post'], permission_classes=[IsTrainer])
     def review(self, request, pk=None):

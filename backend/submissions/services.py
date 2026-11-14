@@ -137,16 +137,33 @@ def recalculate(submission):
     submission.save(update_fields=['score', 'percentage', 'status', 'updated_at'])
 
 
-def finalize(user, submission, answers=None):
+def finalize(user, submission, answers=None, *, require_correct=False):
     require_access(user, submission.assignment)
+    if submission.student_id != user.pk:
+        raise PermissionDenied('This attempt belongs to another student.')
+    if require_correct:
+        questions = list(submission.assignment.questions.all())
+        if len(questions) != 1 or questions[0].type not in ['coding', 'debugging']:
+            raise ValidationError('Check and complete is available for single Python tasks.')
     if submission.status in ['submitted', 'evaluated']:
         return submission  # Retry-safe; no second execution or duplicate attempt.
+    if require_correct:
+        require_open(submission.assignment)
+        if submission.expires_at <= timezone.now():
+            raise ValidationError('Your time has ended. Submit your saved answers.')
     if answers is not None:
         save_answers(user, submission, answers)
     if not Submission.objects.filter(pk=submission.pk, student=user, status='in_progress').update(status='grading', updated_at=timezone.now()):
         raise Conflict('This attempt is already being processed.')
     try:
         responses = [evaluate_response(r) for r in submission.responses.select_related('question').prefetch_related('question__test_cases')]
+        if require_correct:
+            submission.check_results = responses[0].execution.get('samples', [])
+            execution = responses[0].execution
+            if not execution.get('total') or execution.get('passed') != execution['total']:
+                Submission.objects.filter(pk=submission.pk, status='grading').update(status='in_progress')
+                submission.status = 'in_progress'
+                return submission
         with transaction.atomic():
             QuestionResponse.objects.bulk_update(responses, ['score', 'status', 'feedback', 'execution'])
             submission.submitted_at = timezone.now()

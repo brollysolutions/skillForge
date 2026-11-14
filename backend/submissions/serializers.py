@@ -27,6 +27,7 @@ class ResponseSerializer(serializers.ModelSerializer):
 
 
 class SubmissionSerializer(serializers.ModelSerializer):
+    task_completed = serializers.BooleanField(read_only=True)
     responses = ResponseSerializer(many=True, read_only=True)
     assignment_title = serializers.CharField(source='assignment.title', read_only=True)
     student_name = serializers.CharField(source='student.name', read_only=True)
@@ -37,7 +38,7 @@ class SubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Submission
         fields = ['id', 'assignment', 'assignment_title', 'student', 'student_name', 'student_email', 'attempt', 'status', 'started_at',
-                  'expires_at', 'submitted_at', 'score', 'percentage', 'duration_seconds', 'total_marks', 'results_released', 'responses']
+                  'expires_at', 'submitted_at', 'score', 'percentage', 'duration_seconds', 'total_marks', 'results_released', 'task_completed', 'responses']
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

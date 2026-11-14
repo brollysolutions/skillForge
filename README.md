@@ -44,7 +44,7 @@ On macOS/Linux use `.venv/bin/python` instead of `.venv\Scripts\python.exe` and 
 3. Upload a PDF, DOCX, TXT, PPTX, Python script (`.py`), or Jupyter notebook (`.ipynb`), or enter notes. Python indentation is preserved; notebooks contribute code, Markdown, and raw cell sources in order, without outputs or attachments. Uploaded code is never executed. Analyze with Groq, review and edit the summary and extracted concepts, then approve them.
 4. Open a batch and create/upload one task or generate one with AI. Set its deadline and duration. Coding tasks use one visible input and expected output; written tasks use a review rubric.
 5. Review and publish the draft. Current batch members receive access automatically. For older or unbatched work, assign students explicitly.
-6. Students start timed attempts, save answers, run sample tests through the selected isolated runner, and submit. Use [self-hosted Piston](docs/piston-setup.md) without a paid execution API subscription.
+6. Students start timed attempts, save answers, and run sample tests through the selected isolated runner. For a Python task, **Check & complete** saves and completes matching output, or lets the student fix a mismatch. See the [salary assignment walkthrough](docs/coding-assignments.md). Use [self-hosted Piston](docs/piston-setup.md) without a paid execution API subscription.
 7. Review written answers. AI feedback is advisory; only backend grading and trainer-reviewed marks are official.
 8. Close the assessment or wait for its deadline, finish pending evaluations, and release results.
 9. Generate a Gemini performance report, review it, and publish it. Students see their own published reports and approved learning recommendations.

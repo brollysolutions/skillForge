@@ -5,6 +5,9 @@ from .models import Assignment, Question, TestCase
 
 
 class TestCaseSerializer(serializers.ModelSerializer):
+    input = serializers.CharField(allow_blank=True, required=False, trim_whitespace=False)
+    expected_output = serializers.CharField(allow_blank=True, required=False, trim_whitespace=False)
+
     class Meta:
         model = TestCase
         fields = ['id', 'input', 'expected_output', 'is_hidden', 'weight']
@@ -169,6 +172,9 @@ class StudentAssignmentSerializer(serializers.ModelSerializer):
     def get_student_status(self, obj):
         from django.utils import timezone
         submissions = obj.submissions.filter(student=self.context['request'].user)
+        evaluated = submissions.filter(status='evaluated').prefetch_related('responses__question')
+        if any(s.task_completed for s in evaluated):
+            return 'completed'
         if submissions.filter(status='evaluated').exists():
             return 'evaluated' if obj.results_released else 'submitted'
         if submissions.filter(status='submitted').exists():

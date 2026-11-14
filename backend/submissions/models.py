@@ -15,6 +15,16 @@ class Submission(Timestamped):
     percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     duration_seconds = models.PositiveIntegerField(default=0)
 
+    @property
+    def task_completed(self):
+        if self.status != 'evaluated':
+            return False
+        responses = list(self.responses.all())
+        if len(responses) != 1 or responses[0].question.type not in ['coding', 'debugging']:
+            return False
+        execution = responses[0].execution
+        return bool(execution.get('total') and execution.get('passed') == execution['total'])
+
     class Meta:
         constraints = [models.UniqueConstraint(fields=['assignment','student','attempt'], name='unique_attempt')]
         indexes = [models.Index(fields=['student', 'status']), models.Index(fields=['assignment', 'status'])]
